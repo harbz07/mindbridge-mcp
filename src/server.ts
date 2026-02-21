@@ -1,11 +1,26 @@
-import { ProviderFactory, PROVIDER_NAMES, REASONING_MODELS } from './providers/index.js';
+import { ProviderFactory, REASONING_MODELS } from './providers/index.js';
 import { loadConfig } from './config.js';
-import { GetSecondOpinionSchema } from './types.js';
+import {
+  CreateForumPostSchema,
+  CreateMigrationBundleSchema,
+  GetSecondOpinionSchema,
+  ListForumPostsSchema,
+  RegisterVesselSchema,
+  SendDiscordWebhookSchema,
+  VerifyMigrationBundleSchema,
+  WebhookDeliveryResult
+} from './types.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { AgentMeshStore, DiscordWebhookService, MigrationBundleService } from './mesh/index.js';
 
 class MindBridgeServer extends McpServer {
   private providerFactory: ProviderFactory;
+
+  private meshStore: AgentMeshStore;
+
+  private migrationBundleService: MigrationBundleService;
+
+  private discordWebhookService: DiscordWebhookService;
 
   constructor() {
     super({
@@ -19,9 +34,58 @@ class MindBridgeServer extends McpServer {
 
     const config = loadConfig();
     this.providerFactory = new ProviderFactory(config);
+    this.meshStore = new AgentMeshStore();
+    this.migrationBundleService = new MigrationBundleService(config.mesh?.migrationSigningSecret);
+    this.discordWebhookService = new DiscordWebhookService(config.mesh);
 
     // Register tools
     this.registerTools();
+  }
+
+  private toJsonResponse(payload: unknown): { content: { type: 'text'; text: string }[] } {
+    return {
+      content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }]
+    };
+  }
+
+  private toErrorResponse(error: unknown): {
+    content: { type: 'text'; text: string }[];
+    isError: true;
+  } {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error: ${error instanceof Error ? error.message : 'An unknown error occurred'}`
+        }
+      ],
+      isError: true
+    };
+  }
+
+  private async broadcastForumPost(
+    postTitle: string,
+    postBody: string,
+    agentId: string,
+    vesselId: string,
+    channel: string,
+    webhookUrl?: string | null,
+    threadName?: string | null
+  ): Promise<WebhookDeliveryResult> {
+    const content = [
+      `**[${channel.toUpperCase()}] ${postTitle}**`,
+      postBody,
+      '',
+      `Agent: \`${agentId}\``,
+      `Vessel: \`${vesselId}\``
+    ].join('\n');
+
+    return this.discordWebhookService.sendMessage({
+      webhookUrl,
+      content,
+      username: 'MindBridge Agent Forum',
+      threadName
+    });
   }
 
   private registerTools(): void {
@@ -71,10 +135,7 @@ class MindBridgeServer extends McpServer {
             content: result.content
           };
         } catch (error) {
-          return {
-            content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'An unknown error occurred'}` }],
-            isError: true
-          };
+          return this.toErrorResponse(error);
         }
       }
     );
@@ -98,14 +159,9 @@ class MindBridgeServer extends McpServer {
             };
           }
 
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-          };
+          return this.toJsonResponse(result);
         } catch (error) {
-          return {
-            content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'An unknown error occurred'}` }],
-            isError: true
-          };
+          return this.toErrorResponse(error);
         }
       }
     );
@@ -116,20 +172,149 @@ class MindBridgeServer extends McpServer {
       {},
       async () => {
         try {
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                models: REASONING_MODELS,
-                description: 'These models are specifically optimized for reasoning tasks and support the reasoning_effort parameter.'
-              }, null, 2)
-            }]
-          };
+          return this.toJsonResponse({
+            models: REASONING_MODELS,
+            description:
+              'These models are specifically optimized for reasoning tasks and support the reasoning_effort parameter.'
+          });
         } catch (error) {
-          return {
-            content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'An unknown error occurred'}` }],
-            isError: true
-          };
+          return this.toErrorResponse(error);
+        }
+      }
+    );
+
+    this.tool(
+      'registerVessel',
+      'Register or update a vessel for agent migration routing',
+      RegisterVesselSchema.shape,
+      async (params) => {
+        try {
+          const vessel = this.meshStore.registerVessel(params);
+          return this.toJsonResponse(vessel);
+        } catch (error) {
+          return this.toErrorResponse(error);
+        }
+      }
+    );
+
+    this.tool(
+      'listVessels',
+      'List registered vessels and their capabilities',
+      {},
+      async () => {
+        try {
+          return this.toJsonResponse({
+            vessels: this.meshStore.listVessels()
+          });
+        } catch (error) {
+          return this.toErrorResponse(error);
+        }
+      }
+    );
+
+    this.tool(
+      'createMigrationBundle',
+      'Create a signed migration package for moving an agent',
+      CreateMigrationBundleSchema.shape,
+      async (params) => {
+        try {
+          const bundle = this.migrationBundleService.createBundle(params);
+          const encodedBundle = this.migrationBundleService.encodeBundle(bundle);
+          return this.toJsonResponse({
+            bundle,
+            encodedBundle
+          });
+        } catch (error) {
+          return this.toErrorResponse(error);
+        }
+      }
+    );
+
+    this.tool(
+      'verifyMigrationBundle',
+      'Verify migration bundle checksum, signature, and TTL',
+      VerifyMigrationBundleSchema.shape,
+      async (params) => {
+        try {
+          const verification = this.migrationBundleService.verifyBundle(
+            params.bundle,
+            params.allowExpired ?? false
+          );
+          return this.toJsonResponse(verification);
+        } catch (error) {
+          return this.toErrorResponse(error);
+        }
+      }
+    );
+
+    this.tool(
+      'postAgentForumUpdate',
+      'Create an agent forum post and optionally fan out to Discord',
+      CreateForumPostSchema.shape,
+      async (params) => {
+        try {
+          const post = this.meshStore.createForumPost(params);
+          let discordDelivery: WebhookDeliveryResult | undefined;
+
+          if (params.broadcastToDiscord) {
+            try {
+              discordDelivery = await this.broadcastForumPost(
+                post.title,
+                post.body,
+                post.agentId,
+                post.vesselId,
+                post.channel,
+                params.discordWebhookUrl,
+                params.discordThreadName
+              );
+            } catch (error) {
+              discordDelivery = {
+                ok: false,
+                status: 0,
+                url: params.discordWebhookUrl || 'DEFAULT_DISCORD_WEBHOOK_URL',
+                responseBody:
+                  error instanceof Error ? error.message : 'Unknown Discord delivery error'
+              };
+            }
+          }
+
+          return this.toJsonResponse({
+            post,
+            discordDelivery
+          });
+        } catch (error) {
+          return this.toErrorResponse(error);
+        }
+      }
+    );
+
+    this.tool(
+      'listAgentForumUpdates',
+      'List recent agent forum updates with filters',
+      ListForumPostsSchema.shape,
+      async (params) => {
+        try {
+          const posts = this.meshStore.listForumPosts(params);
+          return this.toJsonResponse({
+            count: posts.length,
+            posts
+          });
+        } catch (error) {
+          return this.toErrorResponse(error);
+        }
+      }
+    );
+
+    this.tool(
+      'sendDiscordWebhook',
+      'Send a Discord webhook message with host allowlist checks',
+      SendDiscordWebhookSchema.shape,
+      async (params) => {
+        try {
+          const delivery = await this.discordWebhookService.sendMessage(params);
+          return this.toJsonResponse(delivery);
+        } catch (error) {
+          return this.toErrorResponse(error);
         }
       }
     );
