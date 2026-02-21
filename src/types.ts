@@ -99,7 +99,7 @@ export const RegisterVesselSchema = z.object({
   vesselId: z.string().min(1),
   endpoint: z.string().url().optional().nullable(),
   region: z.string().min(1).optional().nullable(),
-  capabilities: z.array(z.string().min(1)).max(64).optional().default([]),
+  capabilities: z.array(z.string().min(1)).max(64).optional(),
   maxAgents: z.number().int().positive().optional().nullable(),
   metadata: z.record(z.string(), z.string()).optional().nullable()
 });
@@ -110,16 +110,16 @@ export const CreateMigrationBundleSchema = z.object({
   sourceVesselId: z.string().min(1),
   targetVesselId: z.string().min(1),
   state: z.string().min(1),
-  stateFormat: z.enum(['json', 'yaml', 'text']).optional().default('json'),
-  capabilities: z.array(z.string().min(1)).max(128).optional().default([]),
-  ttlSeconds: z.number().int().min(30).max(86400).optional().default(900),
+  stateFormat: z.enum(['json', 'yaml', 'text']).optional(),
+  capabilities: z.array(z.string().min(1)).max(128).optional(),
+  ttlSeconds: z.number().int().min(30).max(86400).optional(),
   metadata: z.record(z.string(), z.string()).optional().nullable()
 });
 export type CreateMigrationBundleInput = z.infer<typeof CreateMigrationBundleSchema>;
 
 export const VerifyMigrationBundleSchema = z.object({
   bundle: z.string().min(1),
-  allowExpired: z.boolean().optional().default(false)
+  allowExpired: z.boolean().optional()
 });
 export type VerifyMigrationBundleInput = z.infer<typeof VerifyMigrationBundleSchema>;
 
@@ -128,9 +128,9 @@ export const CreateForumPostSchema = z.object({
   vesselId: z.string().min(1),
   title: z.string().min(1).max(120),
   body: z.string().min(1).max(5000),
-  channel: ForumChannelSchema.optional().default('general'),
-  tags: z.array(z.string().min(1)).max(20).optional().default([]),
-  broadcastToDiscord: z.boolean().optional().default(false),
+  channel: ForumChannelSchema.optional(),
+  tags: z.array(z.string().min(1)).max(20).optional(),
+  broadcastToDiscord: z.boolean().optional(),
   discordWebhookUrl: z.string().url().optional().nullable(),
   discordThreadName: z.string().min(1).max(100).optional().nullable()
 });
@@ -139,7 +139,7 @@ export type CreateForumPostInput = z.infer<typeof CreateForumPostSchema>;
 export const ListForumPostsSchema = z.object({
   channel: ForumChannelSchema.optional(),
   tag: z.string().min(1).optional(),
-  limit: z.number().int().min(1).max(100).optional().default(25)
+  limit: z.number().int().min(1).max(100).optional()
 });
 export type ListForumPostsInput = z.infer<typeof ListForumPostsSchema>;
 

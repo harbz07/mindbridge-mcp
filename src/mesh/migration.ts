@@ -42,7 +42,8 @@ export class MigrationBundleService {
 
   public createBundle(input: CreateMigrationBundleInput): AgentMigrationBundle {
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + input.ttlSeconds * 1000);
+    const ttlSeconds = input.ttlSeconds ?? 900;
+    const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
 
     const unsignedBundle: UnsignedBundle = {
       version: '1.0',
@@ -52,9 +53,11 @@ export class MigrationBundleService {
       targetVesselId: input.targetVesselId,
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
-      stateFormat: input.stateFormat,
+      stateFormat: input.stateFormat || 'json',
       state: input.state,
-      capabilities: Array.from(new Set(input.capabilities)).sort((a, b) => a.localeCompare(b)),
+      capabilities: Array.from(new Set(input.capabilities || [])).sort((a, b) =>
+        a.localeCompare(b)
+      ),
       metadata: normalizeRecord(input.metadata || {})
     };
 

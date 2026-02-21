@@ -238,7 +238,7 @@ class MindBridgeServer extends McpServer {
         try {
           const verification = this.migrationBundleService.verifyBundle(
             params.bundle,
-            params.allowExpired
+            params.allowExpired ?? false
           );
           return this.toJsonResponse(verification);
         } catch (error) {

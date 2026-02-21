@@ -71,7 +71,7 @@ export class AgentMeshStore {
       vesselId: input.vesselId,
       title: input.title,
       body: input.body,
-      channel: input.channel,
+      channel: input.channel || 'general',
       tags: uniqueSorted(input.tags || []),
       createdAt: new Date().toISOString()
     };
@@ -88,6 +88,7 @@ export class AgentMeshStore {
   public listForumPosts(filters: ListForumPostsInput): ForumPost[] {
     const { channel, tag, limit } = filters;
     const normalizedTag = tag?.trim().toLowerCase();
+    const resultLimit = limit || 25;
 
     return this.forumPosts
       .filter((post) => !channel || post.channel === channel)
@@ -95,6 +96,6 @@ export class AgentMeshStore {
         (post) =>
           !normalizedTag || post.tags.some((postTag) => postTag.toLowerCase() === normalizedTag)
       )
-      .slice(0, limit);
+      .slice(0, resultLimit);
   }
 }
