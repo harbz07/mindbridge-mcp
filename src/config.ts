@@ -13,6 +13,18 @@ function getBaseUrl(name: string, defaultUrl?: string): string {
   return url || defaultUrl || 'http://localhost:11434'; // Fallback for Ollama
 }
 
+function getListEnvVar(name: string): string[] {
+  const value = getEnvVar(name);
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 // Load and validate server configuration
 export function loadConfig(): ServerConfig {
   const config: ServerConfig = {};
@@ -80,6 +92,14 @@ export function loadConfig(): ServerConfig {
   // Ollama Configuration
   config.ollama = {
     baseUrl: getBaseUrl('OLLAMA_BASE_URL', 'http://localhost:11434')
+  };
+
+  // Agent mesh configuration for vessel registry, migration, and webhook fan-out
+  const webhookHostAllowlist = getListEnvVar('WEBHOOK_HOST_ALLOWLIST');
+  config.mesh = {
+    migrationSigningSecret: getEnvVar('AGENT_MIGRATION_SIGNING_SECRET'),
+    defaultDiscordWebhookUrl: getEnvVar('DEFAULT_DISCORD_WEBHOOK_URL'),
+    webhookHostAllowlist
   };
 
   return config;

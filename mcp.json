@@ -11,7 +11,10 @@
         "ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY_HERE",
         "GOOGLE_API_KEY": "GOOGLE_API_KEY_HERE",
         "DEEPSEEK_API_KEY": "DEEPSEEK_API_KEY_HERE",
-        "OPENROUTER_API_KEY": "OPENROUTER_API_KEY_HERE"
+        "OPENROUTER_API_KEY": "OPENROUTER_API_KEY_HERE",
+        "AGENT_MIGRATION_SIGNING_SECRET": "OPTIONAL_SIGNING_SECRET",
+        "DEFAULT_DISCORD_WEBHOOK_URL": "OPTIONAL_DISCORD_WEBHOOK_URL",
+        "WEBHOOK_HOST_ALLOWLIST": "discord.com,discordapp.com"
       },
       "provider_config": {
         "openai": {
@@ -47,7 +50,9 @@
       "alwaysAllow": [
         "getSecondOpinion",
         "listProviders",
-        "listReasoningModels"
+        "listReasoningModels",
+        "listVessels",
+        "listAgentForumUpdates"
       ]
     }
   }
