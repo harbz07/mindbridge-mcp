@@ -127,6 +127,11 @@ The server supports the following environment variables:
 - `DEFAULT_DISCORD_WEBHOOK_URL`: Optional fallback webhook used by `sendDiscordWebhook` and forum fan-out
 - `WEBHOOK_HOST_ALLOWLIST`: Optional comma-separated allowlist of webhook hosts (defaults to Discord hosts)
 
+For `github.com/harbz07/mindbridge-router`, set:
+- `OPENAI_COMPATIBLE_API_BASE_URL` to your router URL ending in `/v1`
+- `OPENAI_COMPATIBLE_API_KEY` to the router's `MINDBRIDGE_API_KEY`
+- `OPENAI_COMPATIBLE_API_MODELS` to router model IDs (for example: `mindbridge:openai/gpt-4o,mindbridge:anthropic/claude-3-5-sonnet`)
+
 ### MCP Configuration
 
 For use with MCP-compatible IDEs like Cursor or Windsurf, you can use the following configuration in your `mcp.json` file:
@@ -172,9 +177,9 @@ For use with MCP-compatible IDEs like Cursor or Windsurf, you can use the follow
         },
         "openai_compatible": {
           "api_key": "API_KEY_HERE_OR_REMOVE_IF_NOT_NEEDED",
-          "base_url": "FULL_API_URL_HERE",
-          "available_models": ["MODEL1", "MODEL2"],
-          "default_model": "MODEL1"
+          "base_url": "https://YOUR_MINDBRIDGE_ROUTER_URL/v1",
+          "available_models": ["mindbridge:openai/gpt-4o", "mindbridge:anthropic/claude-3-5-sonnet"],
+          "default_model": "mindbridge:openai/gpt-4o"
         }
       },
       "default_params": {
