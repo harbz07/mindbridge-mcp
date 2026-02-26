@@ -38,9 +38,9 @@
         },
         "openai_compatible": {
           "api_key": "API_KEY_HERE_OR_REMOVE_IF_NOT_NEEDED",
-          "base_url": "FULL_API_URL_HERE",
-          "available_models": ["MODEL1", "MODEL2"],
-          "default_model": "MODEL1"
+          "base_url": "https://YOUR_MINDBRIDGE_ROUTER_URL/v1",
+          "available_models": ["mindbridge:openai/gpt-4o", "mindbridge:anthropic/claude-3-5-sonnet"],
+          "default_model": "mindbridge:openai/gpt-4o"
         }
       },
       "default_params": {
